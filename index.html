@@ -47,6 +47,27 @@
 		return normalized;
 	}
 	
+	function toCartesian ( right_ascension, declination, distance ) {
+		var raCoord = right_ascension.split(' ');
+		var raHours = raCoord[0].match(/[0-9]+/);
+		var raMinutes = raCoord[1].match(/[0-9]+/) / 60;
+		var raSeconds = raCoord[2].match(/[-+]?[0-9]*\.?[0-9]+/) / 3600;
+		
+		var A = ( parseInt(raHours) + raMinutes + raSeconds) / 12 * Math.PI; // into radians.
+		
+		var decSign = declination.substring(0, 1);
+		decSign = (decSign == "+") ? 1 : 1;
+		
+		var decCoord = declination.split(' ');
+		var decDegrees = decCoord[0].match(/[0-9]+/);
+		var decMinutes = decCoord[1].match(/[0-9]+/) / 60;
+		var decSeconds = decCoord[2].match(/[-+]?[0-9]*\.?[0-9]+/) / 3600;
+		
+		var B = ( parseInt(decDegrees) + decMinutes + decSeconds ) / 45 * Math.PI; // into radians.
+		
+		return [ Math.cos(), Math.sin(), ???]
+	}
+	
 	function init() {
 
 		var container, separation = 100, amountX = 50, amountY = 50,
@@ -92,11 +113,11 @@
 		
 		for ( var i = 0; i < stars.length; i ++ ) {
 			
+			var points = toCartesian( stars[i].ra, stars[i].dec, stars[i].dist );
+			
 			particle = new THREE.Particle( material );
 			//particle.position.x = Math.random() * 2 - 1;
-			particle.position.x = ascensionToX(stars[i].ra);
 			//particle.position.y = Math.random() * 2 - 1;
-			particle.position.y = declinationToY(stars[i].dec);
 			particle.position.z = 1;
 			particle.position.normalize();
 			particle.position.multiplyScalar( stars[i].dist );
@@ -117,10 +138,11 @@
 
 		}
 		
+		// north pole
 		particle = new THREE.Particle( m3 );
 		particle.position.x = 0;
 		particle.position.y = 1;
-		particle.position.z = 1;
+		particle.position.z = 0;
 		particle.position.normalize();
 		particle.position.multiplyScalar( 450 );
 		particle.scale.x = particle.scale.y = 5;
