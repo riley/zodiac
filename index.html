@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+	<title>zodiac</title>
+	
+	<script src="js/jquery-1.5.1.min.js" type="text/javascript" charset="utf-8"></script>
+	<script src="js/Three.js" type="text/javascript" charset="utf-8"></script>
+	<script src="js/RequestAnimationFrame.js" type="text/javascript" charset="utf-8"></script>
+	<script type="text/javascript">
+	var stars;
+	
+	var container;
+	var camera, scene, renderer, group, particle;
+	var mouseX = 0, mouseY = 0;
+	
+	var windowHalfX = window.innerWidth / 2;
+	var windowHalfY = window.innerHeight / 2;
+	
+	function map(v, a, b, x, y) {
+ 	   return (v == a) ? x : (v - a) * (y - x) / (b - a) + x;
+	}
+	
+	function ascensionToX(ra) {
+		var coord = ra.split(' ');
+		
+		var hours = coord[0].match(/[0-9]+/);
+		var minutes = coord[1].match(/[0-9]+/) / 60;
+		var seconds = coord[2].match(/[-+]?[0-9]*\.?[0-9]+/) / 3600;
+		
+		return ( parseInt(hours) + minutes + seconds ) / 24 ;
+	}
+	
+	function declinationToY(dec) {
+		
+		var sign = dec.substring(0,1);
+		sign = (sign == "+") ? 1 : -1;
+		var coord = dec.split(' ');	
+		
+		var degrees = coord[0].match(/[0-9]+/);
+		var minutes = coord[1].match(/[0-9]+/) / 60;
+		var seconds = coord[2].match(/[-+]?[0-9]*\.?[0-9]+/) / 3600;
+		
+		var normalized = ( parseInt(degrees) + minutes + seconds ) / 90 * sign
+		console.log(normalized);
+		
+		return normalized;
+	}
+	
+	function init() {
+
+		var container, separation = 100, amountX = 50, amountY = 50,
+		particles, particle;
+
+		container = document.createElement('div');
+		document.body.appendChild(container);
+
+		camera = new THREE.Camera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+		camera.position.z = 1000;
+
+		scene = new THREE.Scene();
+
+		renderer = new THREE.CanvasRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		container.appendChild(renderer.domElement);
+
+		// particles
+		var program = function ( context ) {
+			context.beginPath();
+			context.arc( 0, 0, 1, 0, PI2, true );
+			context.closePath();
+			context.fill();
+		}
+		
+		var PI2 = Math.PI * 2;
+		var material = new THREE.ParticleCanvasMaterial( {
+
+			color: 0xffffff,
+			program: program
+
+		} );
+		
+		var m2 = new THREE.ParticleCanvasMaterial( {
+			color: 0x00ffff,
+			program: program
+		});
+		
+		var m3 = new THREE.ParticleCanvasMaterial( {
+			color: 0xff00ff,
+			program: program
+		});
+		
+		for ( var i = 0; i < stars.length; i ++ ) {
+			
+			particle = new THREE.Particle( material );
+			//particle.position.x = Math.random() * 2 - 1;
+			particle.position.x = ascensionToX(stars[i].ra);
+			//particle.position.y = Math.random() * 2 - 1;
+			particle.position.y = declinationToY(stars[i].dec);
+			particle.position.z = 1;
+			particle.position.normalize();
+			particle.position.multiplyScalar( stars[i].dist );
+			particle.scale.x = particle.scale.y = Math.random() * 5 + 2.5;
+			scene.addObject( particle );
+
+		}
+		
+		for ( var i = 0; i < 1000; i ++ ) {
+
+			particle = new THREE.Particle( m2 );
+			particle.position.x = Math.random() * 2 - 1;
+			particle.position.y = Math.random() * 2 - 1;
+			particle.position.z = Math.random() * 2 - 1;
+			particle.position.normalize();
+			particle.position.multiplyScalar( Math.random() * 10 + 450 );
+			scene.addObject( particle );
+
+		}
+		
+		particle = new THREE.Particle( m3 );
+		particle.position.x = 0;
+		particle.position.y = 1;
+		particle.position.z = 1;
+		particle.position.normalize();
+		particle.position.multiplyScalar( 450 );
+		particle.scale.x = particle.scale.y = 5;
+		scene.addObject( particle );
+		
+		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+		document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+		document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+	}
+	
+	function onDocumentMouseMove(event) {
+
+		mouseX = event.clientX - windowHalfX;
+		mouseY = event.clientY - windowHalfY;
+	}
+
+	function onDocumentTouchStart( event ) {
+
+		if ( event.touches.length > 1 ) {
+
+			event.preventDefault();
+
+			mouseX = event.touches[ 0 ].pageX - windowHalfX;
+			mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+		}
+
+	}
+
+	function onDocumentTouchMove( event ) {
+
+		if ( event.touches.length == 1 ) {
+
+			event.preventDefault();
+
+			mouseX = event.touches[ 0 ].pageX - windowHalfX;
+			mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+		}
+
+	}
+	
+	function animate() {
+		requestAnimationFrame( animate );
+		
+		render();
+	}
+	
+	function render() {
+		camera.position.x += ( mouseX - camera.position.x ) * 0.05;
+		camera.position.y += ( mouseY - camera.position.y ) * 0.05;
+		
+		renderer.render( scene, camera );
+	}
+	
+	$(function() {
+		$.ajax({
+			url: 'stars.php',
+			dataType: 'json',
+			success: function(resp) {
+				stars = resp;
+				
+				init();
+				animate();
+			},
+			error: function(err) {
+				console.log( err );
+			}
+		});
+		
+		
+		
+	});
+	</script>
+	
+	<style>
+	body {
+		background: #000;
+		margin: 0;
+		overflow: hidden;
+	}
+	</style>
+</head>
+<body id="index" onload="">
+	<!-- le magic -->
+</body>
+</html>
